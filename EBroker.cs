@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace EventBroker
 {
@@ -7,23 +9,34 @@ namespace EventBroker
     /// </summary>
     public class EBroker
     {
-        private readonly MultiDictionary<string, Delegate> subscriptions;
+        private readonly List<Subscriber> subscriptions;
         public EBroker()
         {
-            this.subscriptions = new MultiDictionary<string, Delegate>();
+            this.subscriptions = new List<Subscriber>();
         }
 
         public void Publish<T>(string name, object sender, T args)
         {
-            foreach (Delegate handler in subscriptions[name])
+            IEnumerable<Subscriber> subs = subscriptions.Where(x => x.EvName == name);
+            for(int i = 0; i < subs.Count(); i++)
             {
-                handler.DynamicInvoke(sender, args);
+                subscriptions[i].Handler.DynamicInvoke(sender, args);
             }
         }
 
-        public void Subscribe(string name, Delegate handler)
+        public void Subscribe(string name, Delegate handler, object sender)
         {
-            subscriptions.Add(name, handler);
+            subscriptions.Add(new Subscriber(name, sender.GetHashCode(), handler));
+        }
+
+        public void Unsubscribe(string name)
+        {
+            subscriptions.RemoveAll(x => x.EvName == name);
+        }
+
+        public void Unsubscribe(string name, object sender)
+        {
+            subscriptions.RemoveAll(x => x.EvName == name && x.SenderHash == sender.GetHashCode());
         }
     }
 }
